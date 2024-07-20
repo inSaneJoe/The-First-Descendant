@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" style="height: 100%;">
+<head>
+  <title>DnD World Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="Script/leaflet.css">
+  <script src="Script/leaflet.js"></script>
+  <style>
+    /* Increase the size of the popup */
+    .leaflet-popup-content-wrapper {
+      width: 350px; /* Adjust width as needed */
+      height: auto; /* Adjust height as needed */
+    }
+
+    .leaflet-popup-content {
+      max-width: 100%;
+      max-height: 100%;
+      overflow: auto; /* To handle content overflow */
+    }
+
+    /* Popup container styling */
+    .popup-container {
+      font-family: Arial, sans-serif;
+      padding: 10px;
+      background-color: #ffffff;
+    }
+
+    /* Box for the image */
+    .popup-image-box {
+      margin-bottom: 10px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #d2cde0;
+    }
+
+    .popup-image-box img {
+      width: 100%; /* Adjust width to fit the container */
+      height: auto; /* Maintain aspect ratio */
+    }
+
+    /* Box for the description */
+    .popup-description-box {
+      margin-bottom: 10px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #d2cde0;
+    }
+
+    /* Box for the link */
+    .popup-link-box {
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #d2cde0;
+    }
+
+    .popup-link-box a {
+      color: #1a73e8;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .popup-link-box a:hover {
+      text-decoration: underline;
+    }
+
+    /* Toggle button styling */
+    .toggle-button {
+      margin-top: 10px;
+      padding: 5px 10px;
+      font-size: 14px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .toggle-button:hover {
+      background-color: #0056b3;
+    }
+
+    /* Custom tooltip styling */
+    .custom-tooltip {
+      font-family: 'Arial', sans-serif; /* Customize font */
+      font-size: 20px; /* Customize font size */
+      color: #131313; /* Customize font color */
+      background-color: #ffffff; /* Customize background color */
+      padding: 5px;
+      border-radius: 4px;
+      box-shadow: 0 0 3px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body style="height: 100%; margin: 0;">
+  <div id="map" style="width: 100%; height: 100%; background: #000000;"></div>
+  <script type="text/javascript">
+    // Creating the Map
+    var map = L.map('map').setView([0, 0], 0);
+
+    // Loading the tiles from a relative path
+    L.tileLayer('map/{z}/{x}/{y}.png', {
+      continuousWorld: false,
+      noWrap: true,
+      minZoom: 4,
+      maxZoom: 5,
+    }).addTo(map);
+
+    // Custom Icon
+    var customIcon = function (iconUrl) {
+      return L.icon({
+        iconUrl: iconUrl,
+        iconSize: [32, 32], // size of the icon
+        iconAnchor: [16, 32], // point of the icon which will correspond to marker's location
+        popupAnchor: [0, -32] // point from which the popup should open relative to the iconAnchor
+      });
+    };
+
+    // Function to create a marker with toggleable popups and a customized tooltip
+    var createToggleableMarker = function (lat, lng, icon, popupContent1, popupContent2, tooltipContent) {
+      var marker = L.marker([lat, lng], { icon: icon }).addTo(map); // Added title here
+      var currentPopupContent = 1;
+
+      var updatePopupContent = function () {
+        marker.setPopupContent(`<div class="popup-container">
+                                    <div class="popup-image-box">
+                                      <img src="images/${currentPopupContent === 1 ? '1.png' : '2.png'}" alt="FT Image">
+                                    </div>
+                                    <div class="popup-description-box">
+                                      ${currentPopupContent === 1 ? popupContent1 : popupContent2}
+                                    </div>
+                                    <div class="popup-link-box">
+                                      <a href="https://www.youtube.com/watch?v=example${currentPopupContent}" class="popup-link">Watch Video</a>
+                                    </div>
+                                    <button id="toggle-button-${lat}-${lng}" class="toggle-button">Toggle</button>
+                                 </div>`);
+      };
+
+      marker.bindPopup('<div class="popup-container">'
+                       + '<div class="popup-image-box">'
+                       + '<img src="images/1.png" alt="FT Image">'
+                       + '</div>'
+                       + '<div class="popup-description-box">'
+                       + popupContent1
+                       + '</div>'
+                       + '<div class="popup-link-box">'
+                       + '<a href="https://www.youtube.com/watch?v=example1" class="popup-link">Watch Video</a>'
+                       + '</div>'
+                       + '<button id="toggle-button-' + lat + '-' + lng + '" class="toggle-button">Toggle</button>'
+                       + '</div>')
+            .openPopup();
+
+      marker.on('popupopen', function () {
+        updatePopupContent();
+      });
+
+      // Event delegation for toggle buttons
+      document.addEventListener('click', function (event) {
+        if (event.target && event.target.classList.contains('toggle-button')) {
+          var id = event.target.id;
+          var match = id.match(/(\-?\d+(\.\d+)?)/g); // Extract lat and lng from ID
+          if (match) {
+            var latLng = match.map(Number);
+            currentPopupContent = currentPopupContent === 1 ? 2 : 1;
+            updatePopupContent();
+            marker.openPopup();
+          }
+        }
+      });
+
+      // Custom tooltip
+      marker.bindTooltip(tooltipContent, {
+        direction: 'top',
+        className: 'custom-tooltip',
+        offset: [0, -30]
+      });
+    };
+
+    // Markers with custom icons, toggleable popups, and customized tooltips
+    var gt_portal_icon = customIcon('images/Teleport.png');
+
+    createToggleableMarker(-19.642588, -39.287109, gt_portal_icon,
+      '<b>FT - Popup 1</b><br>Description for FT.',
+      '<b>FT - Popup 2</b><br>Another description for FT.',
+      'FT Marker' // Tooltip content for the marker
+    );
+
+    // Coordinate Finder
+    var coordMarker = L.marker([0, 0], { draggable: true }).addTo(map); // Added title here
+    coordMarker.bindPopup('LatLng Marker').openPopup();
+
+    coordMarker.on('dragend', function (e) {
+      coordMarker.getPopup().setContent(coordMarker.getLatLng().toString()).openOn(map);
+    });
+
+    // Custom tooltip for coordMarker
+    coordMarker.bindTooltip('Coord Finder', {
+      direction: 'top',
+      className: 'custom-tooltip',
+      offset: [0, -30]
+    });
+  </script>
+</body>
+</html>
