@@ -1,32 +1,40 @@
 <!DOCTYPE html>
 <html lang="en" style="height: 100%;">
 <head>
-  <title>DnD World Map</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The First Descendant</title>
   <link rel="stylesheet" href="Script/leaflet.css">
-  <script src="Script/leaflet.js"></script>
+  <script src="Script/leaflet.js" defer></script>
   <style>
-    /* Increase the size of the popup */
+    body {
+      margin: 0;
+      height: 100%;
+      background-color: #000;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
     .leaflet-popup-content-wrapper {
-      width: 350px; /* Adjust width as needed */
-      height: auto; /* Adjust height as needed */
+      width: 350px;
     }
 
     .leaflet-popup-content {
       max-width: 100%;
       max-height: 100%;
-      overflow: auto; /* To handle content overflow */
+      overflow: auto;
     }
 
-    /* Popup container styling */
     .popup-container {
       font-family: Arial, sans-serif;
       padding: 10px;
-      background-color: #ffffff;
+      background-color: #fff;
     }
 
-    /* Box for the image */
-    .popup-image-box {
+    .popup-box {
       margin-bottom: 10px;
       padding: 5px;
       border: 1px solid #ddd;
@@ -35,25 +43,8 @@
     }
 
     .popup-image-box img {
-      width: 100%; /* Adjust width to fit the container */
-      height: auto; /* Maintain aspect ratio */
-    }
-
-    /* Box for the description */
-    .popup-description-box {
-      margin-bottom: 10px;
-      padding: 5px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background-color: #d2cde0;
-    }
-
-    /* Box for the link */
-    .popup-link-box {
-      padding: 5px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background-color: #d2cde0;
+      width: 100%;
+      height: auto;
     }
 
     .popup-link-box a {
@@ -66,140 +57,390 @@
       text-decoration: underline;
     }
 
-    /* Toggle button styling */
-    .toggle-button {
-      margin-top: 10px;
-      padding: 5px 10px;
-      font-size: 14px;
-      background-color: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .toggle-button:hover {
-      background-color: #0056b3;
-    }
-
-    /* Custom tooltip styling */
     .custom-tooltip {
-      font-family: 'Arial', sans-serif; /* Customize font */
-      font-size: 20px; /* Customize font size */
-      color: #131313; /* Customize font color */
-      background-color: #ffffff; /* Customize background color */
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      color: #131313;
+      background-color: #fff;
       padding: 5px;
       border-radius: 4px;
-      box-shadow: 0 0 3px rgba(0,0,0,0.3);
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .toggle-button {
+      display: block;
+      width: 100%;
+      background-color: #b3d16d;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      text-align: left;
+      font-size: 16px;
+    }
+
+    .collapsible-links {
+      display: none;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+      margin-top: 10px;
     }
   </style>
 </head>
-<body style="height: 100%; margin: 0;">
-  <div id="map" style="width: 100%; height: 100%; background: #000000;"></div>
-  <script type="text/javascript">
-    // Creating the Map
-    var map = L.map('map').setView([0, 0], 0);
+<body>
+  <div id="map"></div>
+  <script>
+    function toggleLinks(button) {
+      const linksContainer = button.nextElementSibling;
+      if (linksContainer.style.display === "none" || linksContainer.style.display === "") {
+        linksContainer.style.display = "block";
+        button.textContent = "Hide Links";
+      } else {
+        linksContainer.style.display = "none";
+        button.textContent = "Show Links";
+      }
+    }
 
-    // Loading the tiles from a relative path
-    L.tileLayer('map/{z}/{x}/{y}.png', {
-      continuousWorld: false,
-      noWrap: true,
-      minZoom: 4,
-      maxZoom: 5,
-    }).addTo(map);
+    document.addEventListener('DOMContentLoaded', () => {
+      const map = L.map('map').setView([0, 0], 0);
 
-    // Custom Icon
-    var customIcon = function (iconUrl) {
-      return L.icon({
-        iconUrl: iconUrl,
-        iconSize: [32, 32], // size of the icon
-        iconAnchor: [16, 32], // point of the icon which will correspond to marker's location
-        popupAnchor: [0, -32] // point from which the popup should open relative to the iconAnchor
+      L.tileLayer('map/{z}/{x}/{y}.png', {
+        continuousWorld: false,
+        noWrap: true,
+        minZoom: 4,
+        maxZoom: 5,
+      }).addTo(map);
+
+      const createCustomIcon = (iconUrl) => L.icon({
+        iconUrl,
+        iconSize: [70, 70],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
       });
-    };
 
-    // Function to create a marker with toggleable popups and a customized tooltip
-    var createToggleableMarker = function (lat, lng, icon, popupContent1, popupContent2, tooltipContent) {
-      var marker = L.marker([lat, lng], { icon: icon }).addTo(map); // Added title here
-      var currentPopupContent = 1;
+      const createMarker = ({ lat, lng, iconUrl, popupContent, tooltipContent }) => {
+        const marker = L.marker([lat, lng], { icon: createCustomIcon(iconUrl) }).addTo(map);
 
-      var updatePopupContent = function () {
-        marker.setPopupContent(`<div class="popup-container">
-                                    <div class="popup-image-box">
-                                      <img src="images/${currentPopupContent === 1 ? '1.png' : '2.png'}" alt="FT Image">
-                                    </div>
-                                    <div class="popup-description-box">
-                                      ${currentPopupContent === 1 ? popupContent1 : popupContent2}
-                                    </div>
-                                    <div class="popup-link-box">
-                                      <a href="https://www.youtube.com/watch?v=example${currentPopupContent}" class="popup-link">Watch Video</a>
-                                    </div>
-                                    <button id="toggle-button-${lat}-${lng}" class="toggle-button">Toggle</button>
-                                 </div>`);
+        const linksHtml = popupContent.links.map(link => `
+          <div class="popup-box popup-link-box">
+            <a href="${link.url}" class="popup-link" target="_blank">${link.text}</a>
+          </div>
+        `).join('');
+
+        const popupHtml = `
+          <div class="popup-container">
+            <div class="popup-box popup-image-box">
+              <a href="${popupContent.imageLink}" target="_blank">
+                <img src="${popupContent.image}" alt="Image">
+              </a>
+            </div>
+            <div class="popup-box popup-description-box">
+              ${popupContent.description}
+            </div>
+            <button class="toggle-button" onclick="toggleLinks(this)">Show Links</button>
+            <div class="collapsible-links">
+              ${linksHtml}
+            </div>
+          </div>`;
+
+        marker.bindPopup(popupHtml);
+        marker.bindTooltip(tooltipContent, {
+          direction: 'top',
+          className: 'custom-tooltip',
+          offset: [0, -30]
+        });
       };
 
-      marker.bindPopup('<div class="popup-container">'
-                       + '<div class="popup-image-box">'
-                       + '<img src="images/1.png" alt="FT Image">'
-                       + '</div>'
-                       + '<div class="popup-description-box">'
-                       + popupContent1
-                       + '</div>'
-                       + '<div class="popup-link-box">'
-                       + '<a href="https://www.youtube.com/watch?v=example1" class="popup-link">Watch Video</a>'
-                       + '</div>'
-                       + '<button id="toggle-button-' + lat + '-' + lng + '" class="toggle-button">Toggle</button>'
-                       + '</div>')
-            .openPopup();
+      const markersData = [
+        // The Fallen Theater
+        {
+          lat: -18.75,
+          lng: -40.2,
+          iconUrl: 'images/icons/outpost.png',
+          popupContent: {
+            image: 'images/missions/outpost_the-fallen-theater.png',
+            imageLink: 'images/missions/outpost_the-fallen-theater.png', // Add this line
+            description: '<b>Outposts</b><br>The Fallen Theater.',
+            links: [
+            ]
+          },
+          tooltipContent: 'Outpost'
+        },
+        {
+          lat: -38.53794,
+          lng: -95.87793,
+          iconUrl: 'images/icons/calling-of-the-descendant_hard.png',
+          popupContent: {
+            image: 'images/missions/CD_magister-lab_hard.png',
+            imageLink: 'images/missions/CD_magister-lab_hard.png', // Add this line
+            description: '<b>Description</b><br>Infiltrate the enemy’s strategic point and complete the mission.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/dz7P2x6w898' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Magistre Lab'
+        },
+        {
+          lat: -12.425848,
+          lng: -45.34082,
+          iconUrl: 'images/icons/battle-field-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/BM_K_vulgus-field-generator_hard.png',
+            imageLink: 'images/missions/BM_K_vulgus-field-generator_hard.png', // Add this line
+            description: '<b>Description</b><br>Destroy the Vulgus Field Generators.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/l_og0wrlqsM' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Vulgus Field Generator'
+        },
+        {
+          lat: -26.110749,
+          lng: -43.135938,
+          iconUrl: 'images/icons/battle-field-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/BM_K_vulgus-occupied-buildings_hard.png',
+            imageLink: 'images/missions/BM_K_vulgus-occupied-buildings_hard.png', // Add this line
+            description: '<b>Description</b><br>Clear out the buildings occupied by the Vulgus.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/gLpTzHJ_kmQ' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Vulgus Occupied Buildings'
+        },
+        {
+          lat: 26.94166,
+          lng: -66.1,
+          iconUrl: 'images/icons/zone-recon-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/ZRM_K_fallen-theater-vulgus-strategic-outpost_hard.png',
+            imageLink: 'images/missions/ZRM_K_fallen-theater-vulgus-strategic-outpost_hard.png', // Add this line
+            description: '<b>Description</b><br>The Vulgus have built a strategic outpost near Fallen Theater. Infiltrate and neutralize the power unit.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/WAegWs154kk' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Fallen Theater: Vulgus Strategic Outpost'
+        },
+        // Grand Square
+        {
+          lat: 19.835514,
+          lng: -30.619141,
+          iconUrl: 'images/icons/battle-field-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/BM_K_kingston-surveillance-radar_hard.png',
+            imageLink: 'images/missions/BM_K_kingston-surveillance-radar_hard.png', // Add this line
+            description: '<b>Description</b><br>Defend the Kingston Surveillance Radar.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/QEj1DJuBc8A' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Kingstom Surveillance Radar'
+        },
+        {
+          lat: 13.797489,
+          lng: 2.111406,
+          iconUrl: 'images/icons/outpost.png',
+          popupContent: {
+            image: 'images/missions/CD_magister-lab_hard.png',
+            imageLink: 'https://example.com/image-link', // Add this line
+            description: '<b>Outposts</b><br>The Fallen Theater.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Outpost'
+        },
+        {
+          lat: 21.344627,
+          lng: 6.217773,
+          iconUrl: 'images/icons/special-operation.png',
+          popupContent: {
+            image: 'images/missions/SO_defend-albion-resource.png',
+            imageLink: 'images/missions/SO_defend-albion-resource.png', // Add this line
+            description: '<b>Description</b><br>An Albion workforce transporting the Kuiper needed for the production of military equipment has been attacked by Vulgus. Complete the mission of defending the acquired Kuiper from the Vulgus.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/p82ZKo4Lz4o' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Defend Albion resource'
+        },
+        {
+          lat: 27.165173,
+          lng: 5.734375,
+          iconUrl: 'images/icons/battle-field-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/BM_K_vulgus-data-transmitter_hard.png',
+            imageLink: 'images/missions/BM_K_vulgus-data-transmitter_hard.png', // Add this line
+            description: '<b>Description</b><br>Hack the Vulgus data transmitter to chech the data.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/vlqdK3feyFU' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Vulgus Data Transmitter'
+        },
+        {
+          lat: 44.527843,
+          lng: 0.85332,
+          iconUrl: 'images/icons/battle-field-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/BM_K_suspicious-battery-pack_hard.png',
+            imageLink: 'images/missions/BM_K_suspicious-battery-pack_hard.png', // Add this line
+            description: '<b>Description</b><br>Investigate the suspicious Vulgus battery pack.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/Nv_QNvrmGEA' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Suspicious Battery Pack'
+        },
+        {
+          lat: 20.632784,
+          lng: 21.972656,
+          iconUrl: 'images/icons/void-missiom-fragment_hard.png',
+          popupContent: {
+            image: 'images/missions/VM_K_void-fragment_hard.png',
+            imageLink: 'images/missions/VM_K_void-fragment_hard.png', // Add this line
+            description: '<b>Description</b><br>As a result of Karel using the Ironheart, Void Erosion Fragments have begun to appera throughout Ingris. Void Fragments must be destroyed before the Vukgus collect and finish researching them.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/hkKg_BYhgrU' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Void Fragment'
+        },
+        {
+          lat: 22.853069,
+          lng: 36.705078,
+          iconUrl: 'images/icons/calling-of-the-descendant_hard.png',
+          popupContent: {
+            image: 'images/missions/CD_slumber-valley_hard.png',
+            imageLink: 'images/missions/CD_slumber-valley_hard.png', // Add this line
+            description: '<b>Description</b><br>Infiltrate the enemy’s strategic point and complete the mission.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/-tKCGTEECks' },
+              { text: 'Reward', url: 'images/missions/CD_slumber-valley_hard_AMP.png' }
+            ]
+          },
+          tooltipContent: 'Slumber Valley'
+        },
+        {
+          lat: 37.203719,
+          lng: 46.576172,
+          iconUrl: 'images/icons/void-missiom-reactor_hard.png',
+          popupContent: {
+            image: 'images/missions/VFR_kingston-grand-square_hard.png',
+            imageLink: 'images/missions/VFR_kingston-grand-square_hard.png', // Add this line
+            description: '<b>Description</b><br>To completely destroy the Void Fragments, you must currently use Vulgus technology. Use the Void Fusion Reactor to destroy these dangerous materials and eliminate the Commander protecting the device.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/ETWPmLCxnMY' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Abyssal Void Fusion Reactor - Kingston Grand Square'
+        },
+        // The Desctruction
+        {
+          lat: -5.83917,
+          lng: 27.152344,
+          iconUrl: 'images/icons/outpost.png',
+          popupContent: {
+            image: 'images/missions/CD_magister-lab_hard.png',
+            imageLink: 'https://example.com/image-link', // Add this line
+            description: '<b>Outposts</b><br>The Destruction.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Outpost'
+        },
+        {
+          lat: -6.123887,
+          lng: 35.501953,
+          iconUrl: 'images/icons/normal-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/NM_K_field-communications-center_hard.png',
+            imageLink: 'images/missions/NM_K_field-communications-center_hard.png', // Add this line
+            description: '<b>Description</b><br>Attempt to contact HQ using the emergency communicator.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/AU9O2FSRm7o' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Field Communications Center'
+        },
+        {
+          lat: -4.915299,
+          lng: 48.21875,
+          iconUrl: 'images/icons/normal-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/NM_K_urban-district_hard.png',
+            imageLink: 'images/missions/NM_K_urban-district_hard.png', // Add this line
+            description: '<b>Description</b><br>Secure the urban district that leads to the Communications Relay Base.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/fHOPqXAzc4Y' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Urban District'
+        },
+        {
+          lat: -29.031055,
+          lng: 66.181641,
+          iconUrl: 'images/icons/normal-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/NM_K_field-communications-center_hard.png',
+            imageLink: 'images/missions/NM_K_field-communications-center_hard.png', // Add this line
+            description: '<b>Description</b><br>Inform Albion of Kingston’s situation.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be/uXWkenuasR0' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'The Last Emergency Communicator'
+        },
+        {
+          lat: -26.516767,
+          lng: 71.812891,
+          iconUrl: 'images/icons/battle-field-mission_hard.png',
+          popupContent: {
+            image: 'images/missions/BM_K_kingston-communications-repeater_hard.png',
+            imageLink: 'images/missions/BM_K_kingston-communications-repeater_hard.png', // Add this line
+            description: '<b>Description</b><br>Reactivate the Kingston Communications Repeater.',
+            links: [
+              { text: 'Watch Video', url: 'https://youtu.be' },
+              { text: 'More Info', url: 'https://example.com' }
+            ]
+          },
+          tooltipContent: 'Kingston Communications Repeater'
+        },
+      ];
 
-      marker.on('popupopen', function () {
-        updatePopupContent();
+      markersData.forEach(createMarker);
+
+      const coordMarker = L.marker([0, 0], { draggable: true }).addTo(map);
+      coordMarker.bindPopup('LatLng Marker').openPopup();
+
+      coordMarker.on('dragend', () => {
+        coordMarker.getPopup().setContent(coordMarker.getLatLng().toString()).openOn(map);
       });
 
-      // Event delegation for toggle buttons
-      document.addEventListener('click', function (event) {
-        if (event.target && event.target.classList.contains('toggle-button')) {
-          var id = event.target.id;
-          var match = id.match(/(\-?\d+(\.\d+)?)/g); // Extract lat and lng from ID
-          if (match) {
-            var latLng = match.map(Number);
-            currentPopupContent = currentPopupContent === 1 ? 2 : 1;
-            updatePopupContent();
-            marker.openPopup();
-          }
-        }
-      });
-
-      // Custom tooltip
-      marker.bindTooltip(tooltipContent, {
+      coordMarker.bindTooltip('Coord Finder', {
         direction: 'top',
         className: 'custom-tooltip',
         offset: [0, -30]
       });
-    };
-
-    // Markers with custom icons, toggleable popups, and customized tooltips
-    var gt_portal_icon = customIcon('images/Teleport.png');
-
-    createToggleableMarker(-19.642588, -39.287109, gt_portal_icon,
-      '<b>FT - Popup 1</b><br>Description for FT.',
-      '<b>FT - Popup 2</b><br>Another description for FT.',
-      'FT Marker' // Tooltip content for the marker
-    );
-
-    // Coordinate Finder
-    var coordMarker = L.marker([0, 0], { draggable: true }).addTo(map); // Added title here
-    coordMarker.bindPopup('LatLng Marker').openPopup();
-
-    coordMarker.on('dragend', function (e) {
-      coordMarker.getPopup().setContent(coordMarker.getLatLng().toString()).openOn(map);
-    });
-
-    // Custom tooltip for coordMarker
-    coordMarker.bindTooltip('Coord Finder', {
-      direction: 'top',
-      className: 'custom-tooltip',
-      offset: [0, -30]
     });
   </script>
 </body>
